@@ -4,16 +4,29 @@ pushd `dirname $0` > /dev/null
 SCRIPTPATH=`pwd -P`
 popd > /dev/null
 
-echo Setting up Python virtual environment
+echo Install libcouchbase
 mkdir -p build
+pushd build
+LIBCB_TGZ="libcouchbase-${PLATFORM}-x86_64-2.10.0-cb1.tgz"
+curl http://latestbuilds.service.couchbase.com/builds/latestbuilds/cbdeps/libcouchbase/2.10.0-cb1/${LIBCB_TGZ} | tar zxf -
+popd > /dev/null
+LIBCB_PATH=`pwd -P`/build
+
+echo Setting up Python virtual environment
 python3 -m venv build/venv
 . build/venv/bin/activate
+
+echo Updating pip
+pip3 install -U pip
 
 echo Adding pyinstaller
 pip3 install pyinstaller
 
 echo Installing update_manifest_released requirements
-pip3 install -r ${SCRIPTPATH}/requirements.txt
+pip3 install --global-option=build_ext \
+    --global-option="-I${LIBCB_PATH}/include" \
+    --global-option="-L${LIBCB_PATH}/lib/Release" \
+    -r ${SCRIPTPATH}/requirements.txt
 
 echo Compiling update_manifest_released
 PYINSTDIR=$(pwd)/build/pyinstaller
