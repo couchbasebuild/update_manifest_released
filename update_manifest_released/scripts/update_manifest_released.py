@@ -142,8 +142,11 @@ def main():
                 committer=b'Couchbase Build Team <build-team@couchbase.com>',
                 author=b'Couchbase Build Team <build-team@couchbase.com>'
             )
+            # Note the current refspec ONLY works with pushing to Gerrit;
+            # if further options are needed in the future, more logic will
+            # be needed
             porcelain.push(
-                mf_dir, push_url, b'refs/heads/master:refs/heads/master'
+                mf_dir, push_url, b'refs/heads/master:refs/for/master'
             )
 
 
