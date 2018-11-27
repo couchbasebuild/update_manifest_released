@@ -47,6 +47,28 @@ def cd(path):
         os.chdir(cwd)
 
 
+def generate_change_id():
+    """"""
+
+    tree_id = subprocess.run(['git', 'write-tree'], check=True,
+                             stdout=subprocess.PIPE).stdout
+    author = subprocess.run(['git', 'var', 'GIT_AUTHOR_IDENT'], check=True,
+                            stdout=subprocess.PIPE).stdout
+    committer = subprocess.run(['git', 'var', 'GIT_COMMITTER_IDENT'],
+                               check=True, stdout=subprocess.PIPE).stdout
+
+    data = b'branch master\n'
+    data += b'tree ' + tree_id
+    data += b'author ' + author
+    data += b'committer ' + committer
+
+    sha = subprocess.run(['git', 'hash-object', '-t', 'blob', '--stdin'],
+                         check=True, input=data,
+                         stdout=subprocess.PIPE).stdout.decode().strip()
+
+    return f'I{sha}'
+
+
 def main():
     """"""
 
@@ -138,7 +160,8 @@ def main():
             porcelain.add(paths=[rel_file])
             porcelain.commit(
                 message=f"Add {version} release for {product} into "
-                        f"'released' directory".encode('utf-8'),
+                        f"'released' directory\n\nChange-Id: "
+                        f"{generate_change_id()}\n".encode('utf-8'),
                 committer=b'Couchbase Build Team <build-team@couchbase.com>',
                 author=b'Couchbase Build Team <build-team@couchbase.com>'
             )
