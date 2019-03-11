@@ -6,7 +6,7 @@ name = "pypi"
 [packages]
 dulwich = "*"
 pip = "*"
-"cbbuild-0-4-5" = {editable = true, ref = "v0.4.5", subdirectory = "cbbuild", git = "https://github.com/couchbase/python-couchbase-commons"}
+cbbuild-util-0-5-1 = {git = "https://github.com/couchbase/python-couchbase-commons",ref = "v0.5.1",subdirectory = "cbbuild-util"}
 
 [dev-packages]
 

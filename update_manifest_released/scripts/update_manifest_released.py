@@ -12,7 +12,7 @@ import sys
 
 import dulwich.porcelain as porcelain
 
-import cbbuild.cbutil.git as cbutil_git
+import cbbuild.util.git as cbutil_git
 
 
 # Set up logging and handler
@@ -91,6 +91,11 @@ def main():
     version = args.version
     build_num = args.build_num
 
+    # Get base version (e.g. '5.1.3' from '5.1.3-MP1');
+    # currently making assumption said base will never
+    # include a '-' in it
+    base_version = version.split('-')[0]
+
     # Set logging to debug level on stream handler if --debug was set
     if args.debug:
         logger.setLevel(logging.DEBUG)
@@ -136,12 +141,12 @@ def main():
         # based on given input; currently shells out to Git to determine
         # the necessary information and retrieve the manifest
         with cd(bmf_dir):
-            msg_regex = f'{product} .* {version}-{build_num}'
+            msg_regex = f'{product} .* {base_version}-{build_num}'
             sha = subprocess.run(['git', 'log', '--format=%H', '--grep',
                                   msg_regex], check=True,
                                  stdout=subprocess.PIPE).stdout.strip()
 
-            path = f'{product}/{release}/{version}.xml'
+            path = f'{product}/{release}/{base_version}.xml'
             manifest = subprocess.run(
                 ['git', 'show', f'{sha.decode()}:{path}'],
                 check=True, stdout=subprocess.PIPE).stdout
