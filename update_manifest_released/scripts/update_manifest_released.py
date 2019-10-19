@@ -141,7 +141,7 @@ def main():
         # based on given input; currently shells out to Git to determine
         # the necessary information and retrieve the manifest
         with cd(bmf_dir):
-            msg_regex = f'{product} .* {base_version}-{build_num}'
+            msg_regex = f'^{product} .* {base_version}-{build_num}$'
             sha = subprocess.run(['git', 'log', '--format=%H', '--grep',
                                   msg_regex], check=True,
                                  stdout=subprocess.PIPE).stdout.strip()
