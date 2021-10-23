@@ -4,33 +4,41 @@ pushd `dirname $0` > /dev/null
 SCRIPTPATH=`pwd -P`
 popd > /dev/null
 
-echo Install libcouchbase
-mkdir -p build
-pushd build
-LIBCB_TGZ="libcouchbase-${PLATFORM}-x86_64-2.10.0-cb1.tgz"
-curl http://latestbuilds.service.couchbase.com/builds/latestbuilds/cbdeps/libcouchbase/2.10.0-cb1/${LIBCB_TGZ} | tar zxf -
-popd > /dev/null
-LIBCB_PATH=`pwd -P`/build
-
 echo Setting up Python virtual environment
-python3 -m venv build/venv
-. build/venv/bin/activate
+BUILDDIR="$(pwd)/build"
+mkdir -p "${BUILDDIR}"
+python3 -m venv "${BUILDDIR}/venv"
+. "${BUILDDIR}/venv/bin/activate"
 
 echo Updating pip
 pip3 install -U pip
 
 echo Adding pyinstaller
+# Temporary workaround until
+# https://github.com/pyinstaller/pyinstaller/pull/6218 is in a
+# PyInstaller release
+export STRIP=/usr/bin/strip
 pip3 install pyinstaller
 
 echo Installing update_manifest_released requirements
-pip3 install --global-option=build_ext \
-    --global-option="-I${LIBCB_PATH}/include" \
-    --global-option="-L${LIBCB_PATH}/lib/Release" \
-    -r ${SCRIPTPATH}/requirements.txt
+pip3 install -r ${SCRIPTPATH}/requirements.txt
+
+# Customize _buildversion.py if build info available in environment
+if [ ! -z "${VERSION}" -a ! -z "${BLD_NUM}" ]; then
+    VERSIONPATH="${BUILDDIR}/version"
+    mkdir -p "${VERSIONPATH}"
+    cat <<EOF > "${VERSIONPATH}/_buildversion.py"
+__version__ = "${VERSION}"
+__build__ = "${BLD_NUM}"
+EOF
+else
+    VERSIONPATH=""
+fi
 
 echo Compiling update_manifest_released
 PYINSTDIR=$(pwd)/build/pyinstaller
 mkdir -p ${PYINSTDIR}
+
 pyinstaller --log-level DEBUG \
     --workpath ${PYINSTDIR} \
     --specpath ${PYINSTDIR} \

@@ -11,8 +11,9 @@ import subprocess
 import sys
 
 import dulwich.porcelain as porcelain
-
 import cbbuild.util.git as cbutil_git
+
+from _version import __version__, __build__
 
 
 # Set up logging and handler
@@ -75,15 +76,27 @@ def main():
     parser = argparse.ArgumentParser(
         description='Add a release manifest to the manifest repository'
     )
-    parser.add_argument('-d', '--debug', action='store_true',
-                        help='Enable debugging output')
-    parser.add_argument('-c', '--config', dest='mf_config',
-                        help='Configuration file for Git repositories',
-                        default='manifest_config.ini')
+    parser.add_argument(
+        '-d', '--debug', action='store_true',
+        help='Enable debugging output'
+    )
+    parser.add_argument(
+        '-c', '--config', dest='mf_config', default='manifest_config.ini',
+        help='Configuration file for Git repositories',
+    )
+    parser.add_argument(
+        '-s', '--suffix', default=None,
+        help='Suffix to append to Version; do not include leading hyphen (default None)'
+    )
     parser.add_argument('product', help='Name of product')
     parser.add_argument('release', help='Release name for product')
     parser.add_argument('version', help='Version for product')
     parser.add_argument('build_num', help='Build number for release')
+    parser.add_argument(
+        "-V", "--version", action="version",
+        help="Display cbdep version information",
+        version=f"update_manifest_released version {__version__} (build {__build__})"
+    )
 
     args = parser.parse_args()
     product = args.product
@@ -91,10 +104,7 @@ def main():
     version = args.version
     build_num = args.build_num
 
-    # Get base version (e.g. '5.1.3' from '5.1.3-MP1');
-    # currently making assumption said base will never
-    # include a '-' in it
-    base_version = version.split('-')[0]
+    public_version = f"{version}-{args.suffix}" if args.suffix else version
 
     # Set logging to debug level on stream handler if --debug was set
     if args.debug:
@@ -106,7 +116,7 @@ def main():
 
     if 'main' not in mf_config.sections():
         logger.error(
-            'Invalid or unable to read config file "{}"'.format(mf_config)
+            'Invalid or unable to read config file "{}"'.format(args.mf_config)
         )
         sys.exit(1)
 
@@ -141,12 +151,12 @@ def main():
         # based on given input; currently shells out to Git to determine
         # the necessary information and retrieve the manifest
         with cd(bmf_dir):
-            msg_regex = f'^{product} .* {base_version}-{build_num}$'
+            msg_regex = f'^{product} .* {version}-{build_num}$'
             sha = subprocess.run(['git', 'log', '--format=%H', '--grep',
                                   msg_regex], check=True,
                                  stdout=subprocess.PIPE).stdout.strip()
 
-            path = f'{product}/{release}/{base_version}.xml'
+            path = f'{product}/{release}/{version}.xml'
             manifest = subprocess.run(
                 ['git', 'show', f'{sha.decode()}:{path}'],
                 check=True, stdout=subprocess.PIPE).stdout
@@ -156,7 +166,7 @@ def main():
         with cd(mf_dir):
             rel_dir = mf_dir / 'released' / product
             rel_dir.mkdir(parents=True, exist_ok=True)
-            rel_file = rel_dir / f'{version}.xml'
+            rel_file = rel_dir / f'{public_version}.xml'
 
             with open(rel_file, 'wb') as fh:
                 fh.write(manifest)
@@ -164,7 +174,7 @@ def main():
 
             porcelain.add(paths=[rel_file])
             porcelain.commit(
-                message=f"Add {version} release for {product} into "
+                message=f"Add {public_version} release for {product} into "
                         f"'released' directory\n\nChange-Id: "
                         f"{generate_change_id()}\n".encode('utf-8'),
                 committer=b'Couchbase Build Team <build-team@couchbase.com>',
